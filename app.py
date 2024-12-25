@@ -5,7 +5,7 @@ from haystack.components.readers import ExtractiveReader
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.utils import ComponentDevice  # Importando a classe ComponentDevice
+from haystack.utils import ComponentDevice
 import torch
 from math import ceil
 
@@ -29,8 +29,8 @@ def load_documents():
     # docs_validation = get_unique_docs(dataset["validation"], unique_docs)
     # docs_train = get_unique_docs(dataset["train"], unique_docs)
     docs_test = get_unique_docs(dataset["test"], unique_docs)
-    half_size = ceil(len(docs_test) / 4)  # Arredondar para cima se necessário
-    docs_test_half = docs_test[:half_size]  # Pegar apenas a primeira metade dos documentos
+    #half_size = ceil(len(docs_test) / 4)  # Arredondar para cima se necessário
+    #docs_test_half = docs_test[:half_size]  # Pegar apenas a primeira metade dos documentos
     documents = docs_test
     return documents
 
@@ -42,13 +42,13 @@ def get_document_store(documents):
     Args:
     - documents: list of Document objects.
     """
-    # Verifique se uma GPU está disponível e use-a
+    # Usango GPU
     device = ComponentDevice("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Carregar o modelo no dispositivo correto (GPU ou CPU)
+
     st.caption(f"Building the Document Store")
 
-    # Usando um modelo pré-treinado de Sentence Transformers, movido para a GPU (ou CPU)
+    # Usando 'all-MiniLM-L6-v2' e GPU no embedder
     document_embedder = SentenceTransformersDocumentEmbedder(model = 'all-MiniLM-L6-v2', device=device)
     document_embedder.warm_up()
 
@@ -57,7 +57,6 @@ def get_document_store(documents):
 
     result = document_embedder.run(documents)
 
-    # Acessar os documentos com os embeddings e escrever no documento store
     document_store.write_documents(result["documents"])
 
     return document_store
@@ -73,12 +72,11 @@ def get_question_pipeline(_document_store):
     - pipe: instance of the pipeline.
     """
     st.caption(f"Building the Question Answering pipeline")
+
     # Create the retriever and reader
     retriever = InMemoryEmbeddingRetriever(
         document_store=_document_store
     )
-
-
     # Verificar se o retriever foi criado corretamente
     print(f"Retriever: {retriever}")
     print(dir(retriever))
@@ -86,7 +84,9 @@ def get_question_pipeline(_document_store):
     reader = ExtractiveReader(model="deepset/roberta-base-squad2")
     print(f"Reader: {reader}")
     reader.warm_up()
+
     device = ComponentDevice("cuda" if torch.cuda.is_available() else "cpu")
+
     # Create the pipeline
     pipe = Pipeline()
     pipe.add_component("text_embedder", SentenceTransformersTextEmbedder(model = "all-MiniLM-L6-v2", device = device))
